@@ -34,6 +34,15 @@ python app.py
 
 For Gmail: use an [App Password](https://support.google.com/accounts/answer/185833) (not your regular password).
 
+## Security
+
+- **SECRET_KEY:** Set in `.env` for production (required for sessions)
+- **ADMIN_PASSWORD:** Set in `.env`
+- **Rate limiting:** Admin login (5/min), uploads (10–30/hr), contact (5/min)
+- **CSRF protection:** Admin actions require valid token
+- **Image uploads:** Validated by magic bytes; random filenames; 5MB max
+- **Session:** HttpOnly, SameSite=Lax, 1-hour expiry
+
 ## Admin Panel
 
 - **URL:** http://localhost:5000/admin

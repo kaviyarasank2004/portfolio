@@ -1,8 +1,6 @@
-"""
-Cybersecurity Portfolio - Blue Team / SOC Focused
-Flask Application
-"""
 import os
+import re
+import secrets
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,21 +8,42 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from functools import wraps
 
 app = Flask(__name__)
-CORS(app)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+CORS(app, supports_credentials=True)
+
+# Security: Require strong SECRET_KEY in production
+_secret = os.environ.get('SECRET_KEY')
+if not _secret or _secret == 'dev-secret-change-in-production':
+    import warnings
+    warnings.warn('Set SECRET_KEY in .env for production!', UserWarning)
+app.secret_key = _secret or 'dev-secret-change-in-production'
+
+# Rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 # Configuration
-app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8MB max for uploads
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max for uploads
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
-# Email config for contact form (send to your inbox)
+# Session security
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+
+# Email config
 app.config['EMAIL_HOST'] = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 app.config['EMAIL_PORT'] = int(os.environ.get('EMAIL_PORT', '587'))
 app.config['EMAIL_USER'] = os.environ.get('EMAIL_USER', '')
@@ -32,6 +51,33 @@ app.config['EMAIL_PASSWORD'] = os.environ.get('EMAIL_PASSWORD', '')
 app.config['CONTACT_EMAIL'] = os.environ.get('CONTACT_EMAIL', 'kkaviyarasan961@gmail.com')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'projects'), exist_ok=True)
+
+# Image magic bytes (file signatures) for validation
+IMAGE_SIGNATURES = {
+    b'\x89PNG\r\n\x1a\n': ['png'],
+    b'\xff\xd8\xff': ['jpg', 'jpeg'],
+    b'GIF87a': ['gif'],
+    b'GIF89a': ['gif'],
+    b'\xff\xd8\xff': ['jpg', 'jpeg'],
+    b'RIFF': ['webp'],  # WEBP starts with RIFF
+}
+
+
+def validate_image_content(file_stream, allowed_ext):
+    """Validate file is actually an image by checking magic bytes."""
+    header = file_stream.read(12)
+    file_stream.seek(0)
+    ext_lower = allowed_ext.lower()
+    if ext_lower == 'webp':
+        return header.startswith(b'RIFF') and b'WEBP' in header
+    if ext_lower in ('jpg', 'jpeg'):
+        return header.startswith(b'\xff\xd8\xff')
+    if ext_lower == 'png':
+        return header.startswith(b'\x89PNG\r\n\x1a\n')
+    if ext_lower == 'gif':
+        return header.startswith(b'GIF87a') or header.startswith(b'GIF89a')
+    return False
 
 
 def send_contact_email(name, email, message):
@@ -65,9 +111,6 @@ Reply to: {email}
         return False, str(e)
 
 
-os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'projects'), exist_ok=True)
-
-
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -75,6 +118,23 @@ def admin_required(f):
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
+
+
+def csrf_required(f):
+    """Validate CSRF token for admin API requests."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('X-CSRF-Token') or (request.form.get('csrf_token') if request.form else None)
+        if not token or not secrets.compare_digest(token, session.get('csrf_token', '')):
+            return jsonify({"error": "Invalid security token. Refresh the page and try again."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+def get_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
 
 
 # Kaviyarasan K - Resume Data
@@ -136,7 +196,31 @@ PROJECTS = [
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    """Validate extension and reject double extensions (e.g. file.php.jpg)."""
+    if '.' not in filename:
+        return False
+    parts = filename.rsplit('.', 1)
+    ext = parts[1].lower()
+    if ext not in app.config['ALLOWED_EXTENSIONS']:
+        return False
+    # Reject suspicious patterns
+    if re.search(r'[^\w\-.]', parts[0]):
+        return False
+    return True
+
+
+def sanitize_filename(name):
+    """Generate safe random filename for uploads."""
+    return secrets.token_hex(16)
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
 
 
 @app.route('/')
@@ -145,29 +229,43 @@ def index():
 
 
 @app.route('/admin', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", key_func=lambda: request.remote_addr)
 def admin():
     if request.method == 'POST':
+        csrf_token = request.form.get('csrf_token', '')
+        if not secrets.compare_digest(csrf_token, session.get('csrf_token', '')):
+            return render_template('admin_login.html', error='Invalid request. Please try again.', csrf_token=get_csrf_token())
         password = request.form.get('password', '')
         if password == app.config['ADMIN_PASSWORD']:
             session['admin_logged_in'] = True
+            session.permanent = True
+            session['csrf_token'] = secrets.token_hex(32)
             return redirect(url_for('admin_panel'))
-        return render_template('admin_login.html', error='Invalid password')
+        return render_template('admin_login.html', error='Invalid password', csrf_token=get_csrf_token())
     if session.get('admin_logged_in'):
         return redirect(url_for('admin_panel'))
-    return render_template('admin_login.html')
+    return render_template('admin_login.html', csrf_token=get_csrf_token())
 
 
 @app.route('/admin/panel')
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin'))
-    return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS)
+    return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, csrf_token=get_csrf_token())
 
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_logged_in', None)
+    session.clear()
     return redirect(url_for('index'))
+
+
+@app.route('/api/csrf')
+def api_csrf():
+    """Get CSRF token for admin API requests (requires admin session)."""
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    return jsonify({"csrf_token": get_csrf_token()})
 
 
 @app.route('/api/profile', methods=['GET'])
@@ -177,19 +275,25 @@ def get_profile():
 
 @app.route('/api/profile/picture', methods=['POST'])
 @admin_required
+@csrf_required
+@limiter.limit("10 per hour")
 def upload_profile_picture():
     if 'profile_pic' not in request.files:
         return jsonify({"error": "No file provided"}), 400
     file = request.files['profile_pic']
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
-    if file and allowed_file(file.filename):
-        filename = secure_filename('profile.' + file.filename.rsplit('.', 1)[1].lower())
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        PROFILE['profile_pic'] = f'/static/uploads/{filename}'
-        return jsonify({"success": True, "url": PROFILE['profile_pic']})
-    return jsonify({"error": "Invalid file type"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Invalid file type"}), 400
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    if not validate_image_content(file.stream, ext):
+        return jsonify({"error": "File is not a valid image"}), 400
+    file.stream.seek(0)
+    safe_name = f"{sanitize_filename('')}.{ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
+    file.save(filepath)
+    PROFILE['profile_pic'] = f'/static/uploads/{safe_name}'
+    return jsonify({"success": True, "url": PROFILE['profile_pic']})
 
 
 @app.route('/api/certificates', methods=['GET'])
@@ -199,19 +303,39 @@ def get_certificates():
 
 @app.route('/api/certificates', methods=['POST'])
 @admin_required
+@csrf_required
+@limiter.limit("20 per hour")
 def add_certificate():
-    data = request.json
+    data = request.json or {}
+    name = str(data.get('name', ''))[:200]
+    issuer = str(data.get('issuer', ''))[:200]
+    year = str(data.get('year', ''))[:20]
+    url = str(data.get('url', ''))[:500]
+    if not url.startswith(('http://', 'https://', '')):
+        url = ''
     new_id = max((c['id'] for c in CERTIFICATES), default=0) + 1
     cert = {
         "id": new_id,
-        "name": data.get('name', ''),
-        "issuer": data.get('issuer', ''),
-        "year": data.get('year', ''),
-        "credential_id": data.get('credential_id', ''),
-        "url": data.get('url', '')
+        "name": name,
+        "issuer": issuer,
+        "year": year,
+        "credential_id": str(data.get('credential_id', ''))[:100],
+        "url": url
     }
     CERTIFICATES.append(cert)
     return jsonify(cert), 201
+
+
+@app.route('/api/certificates/<int:cert_id>', methods=['DELETE'])
+@admin_required
+@csrf_required
+def delete_certificate(cert_id):
+    global CERTIFICATES
+    cert = next((c for c in CERTIFICATES if c['id'] == cert_id), None)
+    if not cert:
+        return jsonify({"error": "Certificate not found"}), 404
+    CERTIFICATES = [c for c in CERTIFICATES if c['id'] != cert_id]
+    return jsonify({"success": True})
 
 
 @app.route('/api/projects', methods=['GET'])
@@ -221,22 +345,45 @@ def get_projects():
 
 @app.route('/api/projects', methods=['POST'])
 @admin_required
+@csrf_required
+@limiter.limit("20 per hour")
 def add_project():
-    data = request.json
+    data = request.json or {}
+    title = str(data.get('title', ''))[:200]
+    description = str(data.get('description', ''))[:2000]
+    tech = data.get('tech', [])
+    if isinstance(tech, list):
+        tech = [str(t)[:50] for t in tech[:20]]
+    else:
+        tech = []
     new_id = max((p['id'] for p in PROJECTS), default=0) + 1
     project = {
         "id": new_id,
-        "title": data.get('title', ''),
-        "description": data.get('description', ''),
-        "screenshots": data.get('screenshots', []),
-        "tech": data.get('tech', [])
+        "title": title,
+        "description": description,
+        "screenshots": [],
+        "tech": tech
     }
     PROJECTS.append(project)
     return jsonify(project), 201
 
 
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+@admin_required
+@csrf_required
+def delete_project(project_id):
+    global PROJECTS
+    project = next((p for p in PROJECTS if p['id'] == project_id), None)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+    PROJECTS = [p for p in PROJECTS if p['id'] != project_id]
+    return jsonify({"success": True})
+
+
 @app.route('/api/projects/<int:project_id>/screenshot', methods=['POST'])
 @admin_required
+@csrf_required
+@limiter.limit("30 per hour")
 def upload_project_screenshot(project_id):
     project = next((p for p in PROJECTS if p['id'] == project_id), None)
     if not project:
@@ -246,23 +393,27 @@ def upload_project_screenshot(project_id):
     file = request.files['screenshot']
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
-    if file and allowed_file(file.filename):
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = secure_filename(f'project_{project_id}_{len(project["screenshots"])}.{ext}')
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'projects', filename)
-        file.save(filepath)
-        url = f'/static/uploads/projects/{filename}'
-        project['screenshots'].append(url)
-        return jsonify({"success": True, "url": url, "screenshots": project['screenshots']})
-    return jsonify({"error": "Invalid file type"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Invalid file type"}), 400
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    if not validate_image_content(file.stream, ext):
+        return jsonify({"error": "File is not a valid image"}), 400
+    file.stream.seek(0)
+    safe_name = f"project_{project_id}_{sanitize_filename('')}.{ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'projects', safe_name)
+    file.save(filepath)
+    url = f'/static/uploads/projects/{safe_name}'
+    project['screenshots'].append(url)
+    return jsonify({"success": True, "url": url, "screenshots": project['screenshots']})
 
 
 @app.route('/api/contact', methods=['POST'])
+@limiter.limit("5 per minute")
 def contact():
     data = request.json or {}
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
-    message = data.get('message', '').strip()
+    name = str(data.get('name', ''))[:100].strip()
+    email = str(data.get('email', ''))[:254].strip()
+    message = str(data.get('message', ''))[:2000].strip()
     if not name or not email or not message:
         return jsonify({"success": False, "error": "All fields are required."}), 400
     success, err = send_contact_email(name, email, message)

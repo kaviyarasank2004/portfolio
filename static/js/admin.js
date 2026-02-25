@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initCertificates();
     initProjects();
     initScreenshotUploads();
+    initDeleteCertificates();
+    initDeleteProjects();
 });
 
 function showToast(message, isError = false) {
@@ -16,8 +18,15 @@ function showToast(message, isError = false) {
     setTimeout(() => toast.remove(), 4000);
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
 function fetchWithAuth(url, options = {}) {
-    return fetch(url, { ...options, credentials: 'same-origin' });
+    const headers = { ...(options.headers || {}) };
+    const token = getCsrfToken();
+    if (token) headers['X-CSRF-Token'] = token;
+    return fetch(url, { ...options, credentials: 'same-origin', headers });
 }
 
 function initProfilePicUpload() {
@@ -31,6 +40,7 @@ function initProfilePicUpload() {
 
         const formData = new FormData();
         formData.append('profile_pic', file);
+        formData.append('csrf_token', getCsrfToken());
 
         try {
             const res = await fetchWithAuth('/api/profile/picture', { method: 'POST', body: formData });
@@ -101,6 +111,7 @@ function initScreenshotUploads() {
 
             const formData = new FormData();
             formData.append('screenshot', file);
+            formData.append('csrf_token', getCsrfToken());
 
             try {
                 const res = await fetchWithAuth(`/api/projects/${projectId}/screenshot`, {
@@ -168,5 +179,47 @@ function initProjects() {
         } catch (err) {
             showToast('Failed to add project', true);
         }
+    });
+}
+
+function initDeleteCertificates() {
+    document.querySelectorAll('[data-cert-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = parseInt(btn.dataset.certId, 10);
+            if (!confirm('Delete this certificate?')) return;
+            try {
+                const res = await fetchWithAuth(`/api/certificates/${id}`, { method: 'DELETE' });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    btn.closest('.admin-list-item')?.remove();
+                    showToast('Certificate deleted.');
+                } else {
+                    showToast(data.error || 'Failed to delete', true);
+                }
+            } catch (err) {
+                showToast('Failed to delete', true);
+            }
+        });
+    });
+}
+
+function initDeleteProjects() {
+    document.querySelectorAll('.admin-project-item [data-project-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = parseInt(btn.dataset.projectId, 10);
+            if (!confirm('Delete this project? Screenshots will remain on server.')) return;
+            try {
+                const res = await fetchWithAuth(`/api/projects/${id}`, { method: 'DELETE' });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    btn.closest('.admin-project-item')?.remove();
+                    showToast('Project deleted.');
+                } else {
+                    showToast(data.error || 'Failed to delete', true);
+                }
+            } catch (err) {
+                showToast('Failed to delete', true);
+            }
+        });
     });
 }

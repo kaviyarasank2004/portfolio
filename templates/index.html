@@ -93,19 +93,14 @@
             <h2><span class="section-num">03</span> Projects & Labs</h2>
             <div class="project-grid" id="projectGrid">
                 {% for project in projects %}
-                <div class="project-card" data-id="{{ project.id }}">
+                <div class="project-card{% if project.screenshots %} project-card--with-screenshots{% endif %}" data-id="{{ project.id }}">
+                    {% if project.screenshots %}
                     <div class="project-screenshots">
-                        {% if project.screenshots %}
                         {% for img in project.screenshots %}
-                        <img src="{{ img }}" alt="Lab screenshot" class="project-screenshot">
+                        <img src="{{ img }}" alt="Lab screenshot" class="project-screenshot" loading="lazy">
                         {% endfor %}
-                        {% else %}
-                        <div class="project-screenshot-placeholder">
-                            <span>Lab Screenshots</span>
-                            <small>Add via Admin Panel</small>
-                        </div>
-                        {% endif %}
                     </div>
+                    {% endif %}
                     <div class="project-content">
                         <h3>{{ project.title }}</h3>
                         <p>{{ project.description }}</p>
@@ -201,6 +196,12 @@
             </form>
         </section>
     </main>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close">×</button>
+        <img src="" alt="Lab screenshot (enlarged)" class="lightbox-img" id="lightboxImg">
+        <span class="lightbox-hint">Click outside to close</span>
+    </div>
 
     <footer class="footer">
         <p>© 2025 Kaviyarasan K. Blue Team / SOC Portfolio.</p>

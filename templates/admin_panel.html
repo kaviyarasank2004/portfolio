@@ -15,6 +15,7 @@
         <a href="{{ url_for('index') }}">← Portfolio</a>
         <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
     </nav>
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <main class="admin-main">
         <h1>Admin Panel</h1>
         <p class="admin-desc">Manage your portfolio content. Changes appear on the public site immediately.</p>
@@ -40,7 +41,15 @@
         </section>
 
         <section class="admin-section">
-            <h2>Add Certificate</h2>
+            <h2>Certificates</h2>
+            <div class="admin-list" id="adminCertList">
+                {% for cert in certificates %}
+                <div class="admin-list-item" data-id="{{ cert.id }}">
+                    <span class="admin-list-title">{{ cert.name }}</span>
+                    <button type="button" class="admin-delete-btn" data-cert-id="{{ cert.id }}" title="Delete">Delete</button>
+                </div>
+                {% endfor %}
+            </div>
             <button class="add-cert-btn" id="addCertBtn">+ Add Certificate</button>
             <div class="add-cert-modal" id="addCertModal">
                 <div class="modal-content">
@@ -86,7 +95,10 @@
             <div class="admin-projects-list" id="adminProjectsList">
                 {% for project in projects %}
                 <div class="admin-project-item" data-id="{{ project.id }}">
-                    <h4>{{ project.title }}</h4>
+                    <div class="admin-project-header">
+                        <h4>{{ project.title }}</h4>
+                        <button type="button" class="admin-delete-btn" data-project-id="{{ project.id }}" title="Delete project">Delete</button>
+                    </div>
                     <div class="project-screenshots-preview">
                         {% for img in project.screenshots %}
                         <img src="{{ img }}" alt="Screenshot" class="thumb">

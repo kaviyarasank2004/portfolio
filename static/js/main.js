@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initContact();
     initMobileNav();
+    initScreenshotLightbox();
 });
 
 function showToast(message, isError = false) {
@@ -38,6 +39,36 @@ function initContact() {
         } catch (err) {
             showToast('Failed to send message', true);
         }
+    });
+}
+
+// Screenshot lightbox - click to enlarge
+function initScreenshotLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxClose = document.getElementById('lightboxClose');
+
+    document.querySelectorAll('.project-screenshot').forEach(img => {
+        img.addEventListener('click', () => {
+            lightboxImg.src = img.src;
+            lightbox.setAttribute('aria-hidden', 'false');
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+        lightbox.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    lightboxClose?.addEventListener('click', closeLightbox);
+    lightbox?.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox?.classList.contains('active')) closeLightbox();
     });
 }
 
