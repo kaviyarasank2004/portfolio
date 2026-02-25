@@ -32,12 +32,13 @@ A blue team / SOC-focused portfolio with dark theme, admin panel for content man
 
 ## Admin Panel
 
-- **URL:** http://localhost:5000/admin
+- **URL:** http://localhost:5000/admin (or set `ADMIN_PATH` in `.env` for a custom path, e.g. `ADMIN_PATH=manage-portfolio`)
 - **Default password:** `admin123` (set `ADMIN_PASSWORD` env var to change)
 - **Admin-only features:**
   - Upload profile picture
-  - Add certificates
-  - Add projects/labs
+  - Add, edit, delete experience entries
+  - Add, edit, delete certificates
+  - Add, edit, delete projects/labs
   - Upload lab screenshots for each project
 
 ## Features

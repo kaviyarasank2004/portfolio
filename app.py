@@ -33,6 +33,7 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max for uploads
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'admin123')
+app.config['ADMIN_PATH'] = (os.environ.get('ADMIN_PATH') or 'admin').strip('/') or 'admin'
 
 # Session security
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -99,7 +100,7 @@ def get_csrf_token():
 # Kaviyarasan K - Resume Data
 PROFILE = {
     "name": "Kaviyarasan K",
-    "title": "System-focused Computer Science Student | SOC Aspirant",
+    "title": "Security-focused Computer Science Student | SOC Aspirant",
     "location": "Tamil Nadu, India",
     "email": "kkaviyarasan961@gmail.com",
     "phone": "+91 86681 13009",
@@ -118,16 +119,19 @@ PROFILE = {
         "degree": "B.E. in Computer Science",
         "gpa": "8.0/10"
     },
-    "experience": {
-        "role": "Software Engineer Intern",
-        "company": "Icanio Technologies",
-        "points": [
-            "Developed and maintained Python scripts in a production IT environment",
-            "Assisted with debugging, script optimization, and basic automation tasks",
-            "Used Git for version control and collaborative development",
-            "Worked within structured workflows and task-based assignments"
-        ]
-    },
+    "experience": [
+        {
+            "id": 1,
+            "role": "Software Engineer Intern",
+            "company": "Icanio Technologies",
+            "points": [
+                "Developed and maintained Python scripts in a production IT environment",
+                "Assisted with debugging, script optimization, and basic automation tasks",
+                "Used Git for version control and collaborative development",
+                "Worked within structured workflows and task-based assignments"
+            ]
+        }
+    ],
     "soft_skills": ["Analytical problem-solving", "Attention to detail", "Clear technical communication", "Willingness to learn and document systems"]
 }
 
@@ -187,7 +191,10 @@ def index():
     return render_template('index.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS)
 
 
-@app.route('/admin', methods=['GET', 'POST'])
+_admin_path = app.config['ADMIN_PATH']
+
+
+@app.route(f'/{_admin_path}', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", key_func=lambda: request.remote_addr)
 def admin():
     if request.method == 'POST':
@@ -206,14 +213,14 @@ def admin():
     return render_template('admin_login.html', csrf_token=get_csrf_token())
 
 
-@app.route('/admin/panel')
+@app.route(f'/{_admin_path}/panel')
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin'))
     return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, csrf_token=get_csrf_token())
 
 
-@app.route('/admin/logout')
+@app.route(f'/{_admin_path}/logout')
 def admin_logout():
     session.clear()
     return redirect(url_for('index'))
@@ -255,6 +262,57 @@ def upload_profile_picture():
     return jsonify({"success": True, "url": PROFILE['profile_pic']})
 
 
+@app.route('/api/experience', methods=['GET'])
+def get_experiences():
+    return jsonify(PROFILE['experience'])
+
+
+@app.route('/api/experience', methods=['POST'])
+@admin_required
+@csrf_required
+@limiter.limit("20 per hour")
+def add_experience():
+    data = request.json or {}
+    role = str(data.get('role', ''))[:200]
+    company = str(data.get('company', ''))[:200]
+    points = data.get('points', [])
+    if isinstance(points, list):
+        points = [str(p)[:500] for p in points[:15] if p]
+    else:
+        points = []
+    new_id = max((e['id'] for e in PROFILE['experience']), default=0) + 1
+    exp = {"id": new_id, "role": role, "company": company, "points": points}
+    PROFILE['experience'].append(exp)
+    return jsonify(exp), 201
+
+
+@app.route('/api/experience/<int:exp_id>', methods=['PUT'])
+@admin_required
+@csrf_required
+def update_experience(exp_id):
+    exp = next((e for e in PROFILE['experience'] if e['id'] == exp_id), None)
+    if not exp:
+        return jsonify({"error": "Experience not found"}), 404
+    data = request.json or {}
+    exp['role'] = str(data.get('role', exp['role']))[:200]
+    exp['company'] = str(data.get('company', exp['company']))[:200]
+    points = data.get('points', exp.get('points', []))
+    if isinstance(points, list):
+        exp['points'] = [str(p)[:500] for p in points[:15] if p]
+    return jsonify(exp)
+
+
+@app.route('/api/experience/<int:exp_id>', methods=['DELETE'])
+@admin_required
+@csrf_required
+def delete_experience(exp_id):
+    exp = next((e for e in PROFILE['experience'] if e['id'] == exp_id), None)
+    if not exp:
+        return jsonify({"error": "Experience not found"}), 404
+    PROFILE['experience'] = [e for e in PROFILE['experience'] if e['id'] != exp_id]
+    return jsonify({"success": True})
+
+
 @app.route('/api/certificates', methods=['GET'])
 def get_certificates():
     return jsonify(CERTIFICATES)
@@ -283,6 +341,23 @@ def add_certificate():
     }
     CERTIFICATES.append(cert)
     return jsonify(cert), 201
+
+
+@app.route('/api/certificates/<int:cert_id>', methods=['PUT'])
+@admin_required
+@csrf_required
+def update_certificate(cert_id):
+    cert = next((c for c in CERTIFICATES if c['id'] == cert_id), None)
+    if not cert:
+        return jsonify({"error": "Certificate not found"}), 404
+    data = request.json or {}
+    cert['name'] = str(data.get('name', cert['name']))[:200]
+    cert['issuer'] = str(data.get('issuer', cert['issuer']))[:200]
+    cert['year'] = str(data.get('year', cert['year']))[:20]
+    cert['credential_id'] = str(data.get('credential_id', cert.get('credential_id', '')))[:100]
+    url = str(data.get('url', cert.get('url', '')))[:500]
+    cert['url'] = url if url.startswith(('http://', 'https://')) else ''
+    return jsonify(cert)
 
 
 @app.route('/api/certificates/<int:cert_id>', methods=['DELETE'])
@@ -325,6 +400,24 @@ def add_project():
     }
     PROJECTS.append(project)
     return jsonify(project), 201
+
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+@admin_required
+@csrf_required
+def update_project(project_id):
+    project = next((p for p in PROJECTS if p['id'] == project_id), None)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+    data = request.json or {}
+    project['title'] = str(data.get('title', project['title']))[:200]
+    project['description'] = str(data.get('description', project['description']))[:2000]
+    tech = data.get('tech', project.get('tech', []))
+    if isinstance(tech, list):
+        project['tech'] = [str(t)[:50] for t in tech[:20]]
+    else:
+        project['tech'] = project.get('tech', [])
+    return jsonify(project)
 
 
 @app.route('/api/projects/<int:project_id>', methods=['DELETE'])

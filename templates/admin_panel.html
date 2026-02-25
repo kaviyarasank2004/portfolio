@@ -16,6 +16,9 @@
         <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
     </nav>
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <script type="application/json" id="certificates-data">{{ certificates | tojson }}</script>
+    <script type="application/json" id="projects-data">{{ projects | tojson }}</script>
+    <script type="application/json" id="experiences-data">{{ profile.experience | tojson }}</script>
     <main class="admin-main">
         <h1>Admin Panel</h1>
         <p class="admin-desc">Manage your portfolio content. Changes appear on the public site immediately.</p>
@@ -41,16 +44,81 @@
         </section>
 
         <section class="admin-section">
+            <h2>Experience</h2>
+            <div class="admin-list" id="adminExpList">
+                {% for exp in profile.experience %}
+                <div class="admin-list-item" data-id="{{ exp.id }}">
+                    <span class="admin-list-title">{{ exp.role }} at {{ exp.company }}</span>
+                    <div class="admin-item-actions">
+                        <button type="button" class="admin-edit-btn admin-edit-exp" data-exp-id="{{ exp.id }}" title="Edit">Edit</button>
+                        <button type="button" class="admin-delete-btn admin-delete-exp" data-exp-id="{{ exp.id }}" title="Delete">Delete</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="add-cert-btn" id="addExpBtn">+ Add Experience</button>
+            <div class="add-cert-modal" id="addExpModal">
+                <div class="modal-content">
+                    <h3>Add Experience</h3>
+                    <form id="addExpForm">
+                        <input type="text" name="role" placeholder="Role" required>
+                        <input type="text" name="company" placeholder="Company" required>
+                        <textarea name="points" placeholder="Bullet points (one per line)" rows="6"></textarea>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelAddExp">Cancel</button>
+                            <button type="submit" class="btn-submit">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="add-cert-modal" id="editExpModal">
+                <div class="modal-content">
+                    <h3>Edit Experience</h3>
+                    <form id="editExpForm">
+                        <input type="hidden" name="id" id="editExpId">
+                        <input type="text" name="role" placeholder="Role" required>
+                        <input type="text" name="company" placeholder="Company" required>
+                        <textarea name="points" placeholder="Bullet points (one per line)" rows="6"></textarea>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelEditExp">Cancel</button>
+                            <button type="submit" class="btn-submit">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
             <h2>Certificates</h2>
             <div class="admin-list" id="adminCertList">
                 {% for cert in certificates %}
                 <div class="admin-list-item" data-id="{{ cert.id }}">
                     <span class="admin-list-title">{{ cert.name }}</span>
-                    <button type="button" class="admin-delete-btn" data-cert-id="{{ cert.id }}" title="Delete">Delete</button>
+                    <div class="admin-item-actions">
+                        <button type="button" class="admin-edit-btn admin-edit-cert" data-cert-id="{{ cert.id }}" title="Edit">Edit</button>
+                        <button type="button" class="admin-delete-btn" data-cert-id="{{ cert.id }}" title="Delete">Delete</button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
             <button class="add-cert-btn" id="addCertBtn">+ Add Certificate</button>
+            <div class="add-cert-modal" id="editCertModal">
+                <div class="modal-content">
+                    <h3>Edit Certificate</h3>
+                    <form id="editCertForm">
+                        <input type="hidden" name="id" id="editCertId">
+                        <input type="text" name="name" placeholder="Certificate Name" required>
+                        <input type="text" name="issuer" placeholder="Issuing Organization" required>
+                        <input type="text" name="year" placeholder="Year" required>
+                        <input type="text" name="credential_id" placeholder="Credential ID (optional)">
+                        <input type="url" name="url" placeholder="Verification URL (optional)">
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelEditCert">Cancel</button>
+                            <button type="submit" class="btn-submit">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <div class="add-cert-modal" id="addCertModal">
                 <div class="modal-content">
                     <h3>Add Certificate</h3>
@@ -87,6 +155,21 @@
                     </form>
                 </div>
             </div>
+            <div class="add-cert-modal" id="editProjectModal">
+                <div class="modal-content">
+                    <h3>Edit Project</h3>
+                    <form id="editProjectForm">
+                        <input type="hidden" name="id" id="editProjectId">
+                        <input type="text" name="title" placeholder="Project Title" required>
+                        <textarea name="description" placeholder="Description" rows="4" required></textarea>
+                        <input type="text" name="tech" placeholder="Tech stack (comma-separated)">
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelEditProject">Cancel</button>
+                            <button type="submit" class="btn-submit">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </section>
 
         <section class="admin-section">
@@ -97,7 +180,10 @@
                 <div class="admin-project-item" data-id="{{ project.id }}">
                     <div class="admin-project-header">
                         <h4>{{ project.title }}</h4>
-                        <button type="button" class="admin-delete-btn" data-project-id="{{ project.id }}" title="Delete project">Delete</button>
+                        <div class="admin-item-actions">
+                            <button type="button" class="admin-edit-btn admin-edit-project" data-project-id="{{ project.id }}" title="Edit project">Edit</button>
+                            <button type="button" class="admin-delete-btn" data-project-id="{{ project.id }}" title="Delete project">Delete</button>
+                        </div>
                     </div>
                     <div class="project-screenshots-preview">
                         {% for img in project.screenshots %}

@@ -332,6 +332,11 @@ section h2 {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.exp-card:last-child {
+    margin-bottom: 0;
 }
 
 .exp-card h3 {
@@ -901,6 +906,27 @@ section h2 {
 .admin-delete-btn:hover {
     background: var(--danger);
     color: white;
+}
+
+.admin-item-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.admin-edit-btn {
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.admin-edit-btn:hover {
+    background: var(--accent);
+    color: var(--bg-dark);
 }
 
 .admin-projects-list {
