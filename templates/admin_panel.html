@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="soc-bg"></div>
+    <nav class="admin-nav">
+        <a href="{{ url_for('index') }}">← Portfolio</a>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
+    </nav>
+    <main class="admin-main">
+        <h1>Admin Panel</h1>
+        <p class="admin-desc">Manage your portfolio content. Changes appear on the public site immediately.</p>
+
+        <section class="admin-section">
+            <h2>Profile Picture</h2>
+            <div class="profile-pic-wrapper">
+                <div class="profile-pic-container" id="profilePicContainer">
+                    {% if profile.profile_pic %}
+                    <img src="{{ profile.profile_pic }}" alt="Profile" class="profile-pic" id="profileImg">
+                    {% else %}
+                    <div class="profile-placeholder" id="profilePlaceholder">
+                        <span class="placeholder-icon">👤</span>
+                        <span class="placeholder-text">Add Photo</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <label class="profile-upload-btn" for="profilePicInput">
+                    <input type="file" id="profilePicInput" accept="image/*" hidden>
+                    Change Photo
+                </label>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <h2>Add Certificate</h2>
+            <button class="add-cert-btn" id="addCertBtn">+ Add Certificate</button>
+            <div class="add-cert-modal" id="addCertModal">
+                <div class="modal-content">
+                    <h3>Add Certificate</h3>
+                    <form id="certForm">
+                        <input type="text" name="name" placeholder="Certificate Name" required>
+                        <input type="text" name="issuer" placeholder="Issuing Organization" required>
+                        <input type="text" name="year" placeholder="Year" required>
+                        <input type="text" name="credential_id" placeholder="Credential ID (optional)">
+                        <input type="url" name="url" placeholder="Verification URL (optional)">
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelCert">Cancel</button>
+                            <button type="submit" class="btn-submit">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <h2>Add Project / Lab</h2>
+            <button class="add-cert-btn" id="addProjectBtn">+ Add Project</button>
+            <div class="add-cert-modal" id="addProjectModal">
+                <div class="modal-content">
+                    <h3>Add Project</h3>
+                    <form id="projectForm">
+                        <input type="text" name="title" placeholder="Project Title" required>
+                        <textarea name="description" placeholder="Description" rows="4" required></textarea>
+                        <input type="text" name="tech" placeholder="Tech stack (comma-separated, e.g. Splunk, Wazuh)">
+                        <p class="modal-hint">After adding, you can upload screenshots from the project card on the main portfolio.</p>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="cancelProject">Cancel</button>
+                            <button type="submit" class="btn-submit">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <h2>Project Screenshots</h2>
+            <p class="admin-hint">Upload lab screenshots for each project below.</p>
+            <div class="admin-projects-list" id="adminProjectsList">
+                {% for project in projects %}
+                <div class="admin-project-item" data-id="{{ project.id }}">
+                    <h4>{{ project.title }}</h4>
+                    <div class="project-screenshots-preview">
+                        {% for img in project.screenshots %}
+                        <img src="{{ img }}" alt="Screenshot" class="thumb">
+                        {% endfor %}
+                    </div>
+                    <label class="upload-screenshot-btn">
+                        <input type="file" data-project-id="{{ project.id }}" accept="image/*" class="screenshot-input" hidden>
+                        + Add Screenshot
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

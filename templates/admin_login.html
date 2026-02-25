@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="soc-bg"></div>
+    <div class="admin-login-box">
+        <div class="admin-login-header">
+            <span class="admin-badge">🔐 Admin</span>
+            <h1>Portfolio Admin</h1>
+            <p>Enter password to manage content</p>
+        </div>
+        <form method="POST" class="admin-login-form">
+            <input type="password" name="password" placeholder="Password" required autofocus>
+            {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+            <button type="submit">Login</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="back-link">← Back to Portfolio</a>
+    </div>
+</body>
+</html>
