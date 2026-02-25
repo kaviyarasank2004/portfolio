@@ -1,6 +1,5 @@
 // Public Portfolio - Contact form and mobile nav only
 document.addEventListener('DOMContentLoaded', () => {
-    initContact();
     initMobileNav();
     initScreenshotLightbox();
 });
@@ -13,33 +12,6 @@ function showToast(message, isError = false) {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
-}
-
-// Contact Form
-function initContact() {
-    const form = document.getElementById('contactForm');
-    form?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fd = new FormData(form);
-        const data = Object.fromEntries(fd);
-
-        try {
-            const res = await fetch('/api/contact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await res.json().catch(() => ({}));
-            if (res.ok && result.success) {
-                showToast(result.message);
-                form.reset();
-            } else {
-                showToast(result.error || 'Failed to send', true);
-            }
-        } catch (err) {
-            showToast('Failed to send message', true);
-        }
-    });
 }
 
 // Screenshot lightbox - click to enlarge

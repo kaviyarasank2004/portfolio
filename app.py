@@ -4,9 +4,6 @@ import secrets
 from dotenv import load_dotenv
 
 load_dotenv()
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -43,13 +40,6 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
-# Email config
-app.config['EMAIL_HOST'] = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-app.config['EMAIL_PORT'] = int(os.environ.get('EMAIL_PORT', '587'))
-app.config['EMAIL_USER'] = os.environ.get('EMAIL_USER', '')
-app.config['EMAIL_PASSWORD'] = os.environ.get('EMAIL_PASSWORD', '')
-app.config['CONTACT_EMAIL'] = os.environ.get('CONTACT_EMAIL', 'kkaviyarasan961@gmail.com')
-
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'projects'), exist_ok=True)
 
@@ -78,37 +68,6 @@ def validate_image_content(file_stream, allowed_ext):
     if ext_lower == 'gif':
         return header.startswith(b'GIF87a') or header.startswith(b'GIF89a')
     return False
-
-
-def send_contact_email(name, email, message):
-    """Send contact form message to portfolio owner's email."""
-    if not app.config['EMAIL_USER'] or not app.config['EMAIL_PASSWORD']:
-        return False, "Email not configured. Set EMAIL_USER and EMAIL_PASSWORD env vars."
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = app.config['EMAIL_USER']
-        msg['To'] = app.config['CONTACT_EMAIL']
-        msg['Subject'] = f"Portfolio Contact: {name}"
-        body = f"""
-New message from your portfolio contact form:
-
-Name: {name}
-Email: {email}
-
-Message:
-{message}
-
----
-Reply to: {email}
-"""
-        msg.attach(MIMEText(body.strip(), 'plain'))
-        with smtplib.SMTP(app.config['EMAIL_HOST'], app.config['EMAIL_PORT']) as server:
-            server.starttls()
-            server.login(app.config['EMAIL_USER'], app.config['EMAIL_PASSWORD'])
-            server.send_message(msg)
-        return True, None
-    except Exception as e:
-        return False, str(e)
 
 
 def admin_required(f):
@@ -405,21 +364,6 @@ def upload_project_screenshot(project_id):
     url = f'/static/uploads/projects/{safe_name}'
     project['screenshots'].append(url)
     return jsonify({"success": True, "url": url, "screenshots": project['screenshots']})
-
-
-@app.route('/api/contact', methods=['POST'])
-@limiter.limit("5 per minute")
-def contact():
-    data = request.json or {}
-    name = str(data.get('name', ''))[:100].strip()
-    email = str(data.get('email', ''))[:254].strip()
-    message = str(data.get('message', ''))[:2000].strip()
-    if not name or not email or not message:
-        return jsonify({"success": False, "error": "All fields are required."}), 400
-    success, err = send_contact_email(name, email, message)
-    if success:
-        return jsonify({"success": True, "message": "Thank you! Your message has been sent."})
-    return jsonify({"success": False, "error": err or "Failed to send message."}), 500
 
 
 if __name__ == '__main__':

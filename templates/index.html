@@ -56,7 +56,7 @@
                     </div>
                     <div class="hero-links">
                         {% if profile.linkedin %}
-                        <a href="{{ profile.linkedin }}" target="_blank" class="social-link">LinkedIn</a>
+                        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener" class="social-link">LinkedIn</a>
                         {% endif %}
                         {% if profile.github %}
                         <a href="{{ profile.github }}" target="_blank" class="social-link">GitHub</a>
@@ -183,17 +183,13 @@
         <section id="contact" class="contact">
             <h2><span class="section-num">06</span> Contact</h2>
             <div class="contact-info">
-                <p><strong>Email:</strong> <a href="mailto:{{ profile.email }}">{{ profile.email }}</a></p>
+                <p><strong>Email:</strong> <a href="mailto:{{ profile.email }}" target="_blank" rel="noopener">{{ profile.email }}</a></p>
                 <p><strong>Phone:</strong> <a href="tel:{{ profile.phone }}">{{ profile.phone }}</a></p>
                 <p><strong>Location:</strong> {{ profile.location }}</p>
-                <p><strong>LinkedIn:</strong> <a href="{{ profile.linkedin }}" target="_blank">{{ profile.linkedin }}</a></p>
+                {% if profile.linkedin %}
+                <p><strong>LinkedIn:</strong> <a href="{{ profile.linkedin }}" target="_blank" rel="noopener">{{ profile.linkedin }}</a></p>
+                {% endif %}
             </div>
-            <form class="contact-form" id="contactForm">
-                <input type="text" name="name" placeholder="Your Name" required>
-                <input type="email" name="email" placeholder="Your Email" required>
-                <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
-                <button type="submit" class="submit-btn">Send Message</button>
-            </form>
         </section>
     </main>
 
