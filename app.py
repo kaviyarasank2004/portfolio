@@ -185,6 +185,8 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    if os.environ.get('FLASK_ENV') == 'production':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
 
@@ -277,6 +279,10 @@ def upload_resume():
     ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
     if ext not in app.config['RESUME_EXTENSIONS']:
         return jsonify({"error": "Only PDF files are allowed"}), 400
+    if not file.stream.read(5).startswith(b'%PDF-'):
+        file.stream.seek(0)
+        return jsonify({"error": "File is not a valid PDF"}), 400
+    file.stream.seek(0)
     safe_name = f"resume_{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
     file.save(filepath)
@@ -482,4 +488,8 @@ def upload_project_screenshot(project_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    debug = os.environ.get('FLASK_ENV', 'production') == 'development'
+    if debug:
+        import warnings
+        warnings.warn('Debug mode. Set FLASK_ENV=production for deploy.', UserWarning)
+    app.run(debug=debug, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

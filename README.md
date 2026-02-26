@@ -95,6 +95,12 @@ The admin panel is **not linked** from the public site. Access it directly at:
 | `SECRET_KEY` | Production | Secret key for sessions |
 | `ADMIN_PASSWORD` | Yes | Admin login password |
 | `ADMIN_PATH` | No | Admin URL path (default: `admin`) |
+| `FLASK_ENV` | Production | Set to `production` for deploy; `development` for debug |
+| `PORT` | No | Server port (default: 5000) |
+
+## Production Deployment
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for security checklist and deployment steps. Use Gunicorn, not `python app.py`.
 
 ## License
 
