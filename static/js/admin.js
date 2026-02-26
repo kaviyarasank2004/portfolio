@@ -1,6 +1,7 @@
 // Admin Panel - Profile, Certificates, Projects (credentials: include for session)
 document.addEventListener('DOMContentLoaded', () => {
     initProfilePicUpload();
+    initResumeUpload();
     initAddExperience();
     initEditExperience();
     initDeleteExperience();
@@ -86,6 +87,37 @@ function initProfilePicUpload() {
                 }
                 img.src = data.url + '?t=' + Date.now();
                 showToast('Profile picture updated!');
+            } else {
+                showToast(data.error || 'Upload failed', true);
+            }
+        } catch (err) {
+            showToast('Upload failed', true);
+        }
+        input.value = '';
+    });
+}
+
+function initResumeUpload() {
+    const input = document.getElementById('resumeInput');
+    input?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('resume', file);
+        formData.append('csrf_token', getCsrfToken());
+
+        try {
+            const res = await fetchWithAuth('/api/profile/resume', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                const statusEl = document.querySelector('.resume-status');
+                const labelEl = document.querySelector('label[for="resumeInput"]');
+                if (statusEl) {
+                    statusEl.innerHTML = `Current: <a href="${data.url}" target="_blank">View resume</a>`;
+                }
+                if (labelEl) labelEl.textContent = 'Change Resume';
+                showToast('Resume updated!');
             } else {
                 showToast(data.error || 'Upload failed', true);
             }

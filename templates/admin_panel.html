@@ -44,6 +44,22 @@
         </section>
 
         <section class="admin-section">
+            <h2>Resume</h2>
+            <p class="admin-hint">Upload a PDF resume. It will appear as a download link next to LinkedIn on the home page.</p>
+            <div class="resume-upload-area">
+                {% if profile.resume %}
+                <p class="resume-status">Current: <a href="{{ profile.resume }}" target="_blank">View resume</a></p>
+                {% else %}
+                <p class="resume-status">No resume uploaded</p>
+                {% endif %}
+                <label class="profile-upload-btn" for="resumeInput">
+                    <input type="file" id="resumeInput" accept=".pdf,application/pdf" hidden>
+                    {{ 'Change Resume' if profile.resume else 'Upload Resume' }}
+                </label>
+            </div>
+        </section>
+
+        <section class="admin-section">
             <h2>Experience</h2>
             <div class="admin-list" id="adminExpList">
                 {% for exp in profile.experience %}

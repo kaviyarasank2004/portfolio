@@ -273,6 +273,28 @@ body {
     text-decoration: underline;
 }
 
+.resume-link {
+    font-weight: 500;
+}
+
+.resume-upload-area {
+    margin-top: 0.5rem;
+}
+
+.resume-upload-area .resume-status {
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+}
+
+.resume-upload-area .resume-status a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.resume-upload-area .resume-status a:hover {
+    text-decoration: underline;
+}
+
 /* Sections */
 section {
     padding: 4rem 2rem;

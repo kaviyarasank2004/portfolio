@@ -32,6 +32,7 @@ limiter = Limiter(
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max for uploads
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['RESUME_EXTENSIONS'] = {'pdf'}
 app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'admin123')
 app.config['ADMIN_PATH'] = (os.environ.get('ADMIN_PATH') or 'admin').strip('/') or 'admin'
 
@@ -108,6 +109,7 @@ PROFILE = {
     "github": "",
     "bio": "System-focused Computer Science student with hands-on experience in Linux/Windows administration, networking, and scripting. Built a home lab simulating enterprise environments using Active Directory, firewalls, and centralized logging. Strong foundation in system monitoring and incident handling through cybersecurity training. Seeking a System Administrator Internship.",
     "profile_pic": None,
+    "resume": None,
     "skills": {
         "os_admin": ["Linux administration", "Windows administration", "Active Directory basics", "User and access management", "System monitoring"],
         "networking": ["TCP/IP fundamentals", "VLANs", "Network segmentation", "Firewall concepts", "Traffic analysis"],
@@ -260,6 +262,26 @@ def upload_profile_picture():
     file.save(filepath)
     PROFILE['profile_pic'] = f'/static/uploads/{safe_name}'
     return jsonify({"success": True, "url": PROFILE['profile_pic']})
+
+
+@app.route('/api/profile/resume', methods=['POST'])
+@admin_required
+@csrf_required
+@limiter.limit("5 per hour")
+def upload_resume():
+    if 'resume' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files['resume']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+    if ext not in app.config['RESUME_EXTENSIONS']:
+        return jsonify({"error": "Only PDF files are allowed"}), 400
+    safe_name = f"resume_{sanitize_filename('')}.{ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
+    file.save(filepath)
+    PROFILE['resume'] = f'/static/uploads/{safe_name}'
+    return jsonify({"success": True, "url": PROFILE['resume']})
 
 
 @app.route('/api/experience', methods=['GET'])

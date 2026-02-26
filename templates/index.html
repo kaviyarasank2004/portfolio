@@ -54,11 +54,14 @@
                         <span>{{ profile.location }}</span>
                     </div>
                     <div class="hero-links">
+                        {% if profile.resume %}
+                        <a href="{{ profile.resume }}" target="_blank" rel="noopener" class="social-link resume-link">Resume</a>
+                        {% endif %}
                         {% if profile.linkedin %}
                         <a href="{{ profile.linkedin }}" target="_blank" rel="noopener" class="social-link">LinkedIn</a>
                         {% endif %}
                         {% if profile.github %}
-                        <a href="{{ profile.github }}" target="_blank" class="social-link">GitHub</a>
+                        <a href="{{ profile.github }}" target="_blank" rel="noopener" class="social-link">GitHub</a>
                         {% endif %}
                     </div>
                 </div>
