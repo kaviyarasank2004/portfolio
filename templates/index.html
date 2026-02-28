@@ -3,17 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kaviyarasan K | SOC & Blue Team Portfolio</title>
+    <title>Kaviyarasan K | Cybersecurity Professional</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="soc-bg"></div>
     
     <nav class="nav">
-        <a href="#home" class="nav-logo">Cybersecurity</a>
+        <a href="#home" class="nav-logo">
+            <span class="nav-logo-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            Cyber Security
+        </a>
         <ul class="nav-links">
             <li><a href="#home">Home</a></li>
             <li><a href="#about">About</a></li>
@@ -42,27 +47,17 @@
                     </div>
                 </div>
                 <div class="hero-content">
-                    <span class="hero-badge">Blue Team | SOC Aspirant</span>
-                    <h1>{{ profile.name }}</h1>
-                    <p class="hero-title">{{ profile.title }}</p>
-                    <p class="hero-bio">{{ profile.bio }}</p>
-                    <div class="hero-contact-inline">
-                        <a href="mailto:{{ profile.email }}">{{ profile.email }}</a>
-                        <span>•</span>
-                        <a href="tel:{{ profile.phone }}">{{ profile.phone }}</a>
-                        <span>•</span>
-                        <span>{{ profile.location }}</span>
-                    </div>
-                    <div class="hero-links">
-                        {% if profile.resume %}
-                        <a href="{{ profile.resume }}" target="_blank" rel="noopener" class="social-link resume-link">Resume</a>
-                        {% endif %}
-                        {% if profile.linkedin %}
-                        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener" class="social-link">LinkedIn</a>
-                        {% endif %}
-                        {% if profile.github %}
-                        <a href="{{ profile.github }}" target="_blank" rel="noopener" class="social-link">GitHub</a>
-                        {% endif %}
+                    <h1 class="hero-greeting">Hi, I'm Kaviyarasan 👋</h1>
+                    <p class="hero-tagline">A security-focused Computer Science student passionate about monitoring, detection, and incident response.</p>
+                    <div class="hero-connect">
+                        <span class="hero-connect-label">Connect</span>
+                        <div class="hero-links">
+                            {% if profile.linkedin %}
+                            <a href="{{ profile.linkedin }}" target="_blank" rel="noopener" class="hero-link">LinkedIn</a>
+                            <span class="hero-link-sep">·</span>
+                            {% endif %}
+                            <a href="{{ profile.resume if profile.resume else '#contact' }}" {% if profile.resume %}target="_blank" rel="noopener"{% endif %} class="hero-link">Resume</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -70,7 +65,7 @@
 
         <section id="about" class="about">
             <h2><span class="section-num">01</span> About</h2>
-            <p class="about-text">{{ profile.bio }}</p>
+            <p class="about-text">{{ profile.about }}</p>
             <div class="education-block">
                 <h3>Education</h3>
                 <p><strong>{{ profile.education.institution }}</strong> — {{ profile.education.degree }}</p>
@@ -94,25 +89,31 @@
         </section>
 
         <section id="projects" class="projects">
-            <h2><span class="section-num">03</span> Projects & Labs</h2>
+            <p class="section-label">Portfolio</p>
+            <h2>Homemade projects to become the best</h2>
             <div class="project-grid" id="projectGrid">
                 {% for project in projects %}
-                <div class="project-card{% if project.screenshots %} project-card--with-screenshots{% endif %}" data-id="{{ project.id }}">
-                    {% if project.screenshots %}
-                    <div class="project-screenshots">
-                        {% for img in project.screenshots %}
-                        <img src="{{ img }}" alt="Lab screenshot" class="project-screenshot" loading="lazy">
-                        {% endfor %}
+                <div class="project-card" data-id="{{ project.id }}">
+                    <div class="project-card-image">
+                        {% if project.screenshots %}
+                        <img src="{{ project.screenshots[0] }}" alt="{{ project.title }}" class="project-screenshot" loading="lazy">
+                        {% else %}
+                        <div class="project-placeholder">
+                            <span class="project-placeholder-icon">🛡️</span>
+                            <span>Lab</span>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                    <div class="project-content">
+                    <div class="project-card-content">
                         <h3>{{ project.title }}</h3>
                         <p>{{ project.description }}</p>
+                        {% if project.tech %}
                         <div class="project-tech">
                             {% for t in project.tech %}
                             <span class="tech-tag">{{ t }}</span>
                             {% endfor %}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -142,6 +143,14 @@
             <h2><span class="section-num">05</span> Technical Skills</h2>
             <div class="skills-grid">
                 <div class="skill-category">
+                    <h4>Security & Monitoring</h4>
+                    <div class="skill-tags">
+                        {% for s in profile.skills.security_monitoring %}
+                        <span class="skill-tag">{{ s }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="skill-category">
                     <h4>OS & Administration</h4>
                     <div class="skill-tags">
                         {% for s in profile.skills.os_admin %}
@@ -153,14 +162,6 @@
                     <h4>Networking</h4>
                     <div class="skill-tags">
                         {% for s in profile.skills.networking %}
-                        <span class="skill-tag">{{ s }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h4>Security & Monitoring</h4>
-                    <div class="skill-tags">
-                        {% for s in profile.skills.security_monitoring %}
                         <span class="skill-tag">{{ s }}</span>
                         {% endfor %}
                     </div>
@@ -186,6 +187,7 @@
 
         <section id="contact" class="contact">
             <h2><span class="section-num">06</span> Contact</h2>
+            <p class="contact-intro">Get in touch — I'm open to opportunities and collaboration.</p>
             <div class="contact-info">
                 <p><strong>Email:</strong> <a href="mailto:{{ profile.email }}" target="_blank" rel="noopener">{{ profile.email }}</a></p>
                 <p><strong>Phone:</strong> <a href="tel:{{ profile.phone }}">{{ profile.phone }}</a></p>
@@ -206,6 +208,11 @@
     <footer class="footer">
         <p>© 2026 Kaviyarasan K. Cybersecurity Professional Portfolio. All rights reserved.</p>
     </footer>
+
+    <div class="security-popup" id="securityPopup" aria-live="polite">
+        <span class="security-popup-text">Stay Secure</span>
+        <button class="security-popup-close" aria-label="Close">×</button>
+    </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

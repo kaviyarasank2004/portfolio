@@ -1,9 +1,11 @@
 import os
 import re
 import secrets
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from app directory (works regardless of cwd)
+load_dotenv(Path(__file__).resolve().parent / '.env')
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -29,7 +31,7 @@ limiter = Limiter(
 )
 
 # Configuration
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max for uploads
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max for uploads
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['RESUME_EXTENSIONS'] = {'pdf'}
@@ -107,14 +109,15 @@ PROFILE = {
     "phone": "+91 86681 13009",
     "linkedin": "https://linkedin.com/in/kaviyarasan-0x01",
     "github": "",
-    "bio": "System-focused Computer Science student with hands-on experience in Linux/Windows administration, networking, and scripting. Built a home lab simulating enterprise environments using Active Directory, firewalls, and centralized logging. Strong foundation in system monitoring and incident handling through cybersecurity training. Seeking a System Administrator Internship.",
+    "bio": "Security-focused Computer Science student with hands-on experience in Linux and Windows system administration, network configuration, and automation scripting. Designed and deployed a home lab replicating enterprise security architecture, including Active Directory, firewall configuration, endpoint monitoring, and centralized log management. Experienced in system hardening, log analysis, threat detection, and incident response fundamentals through structured cybersecurity training. Seeking a Cybersecurity Internship role focused on defensive security operations and infrastructure protection.",
+    "about": "Security-focused Computer Science student with hands-on experience in Linux and Windows system administration, network configuration, and automation scripting. Designed and deployed a home lab replicating enterprise security architecture, including Active Directory, firewall configuration, endpoint monitoring, and centralized log management. Experienced in system hardening, log analysis, threat detection, and incident response fundamentals through structured cybersecurity training. Seeking a Cybersecurity Internship role focused on defensive security operations and infrastructure protection.",
     "profile_pic": None,
     "resume": None,
     "skills": {
         "os_admin": ["Linux administration", "Windows administration", "Active Directory basics", "User and access management", "System monitoring"],
         "networking": ["TCP/IP fundamentals", "VLANs", "Network segmentation", "Firewall concepts", "Traffic analysis"],
-        "security_monitoring": ["Log analysis", "SIEM monitoring (Splunk, Wazuh)", "Sysmon", "IDS/IPS fundamentals"],
-        "scripting": ["Python scripting", "Git"]
+        "security_monitoring": ["Log analysis", "SIEM monitoring (Splunk, Wazuh, ELK)", "Sysmon", "IDS/IPS", "Threat Intelligence", "Threat Hunting"],
+        "scripting": ["Python scripting", "Git", "Bash scripting"]
     },
     "education": {
         "institution": "DMI Engineering College",
@@ -168,8 +171,8 @@ def allowed_file(filename):
     ext = parts[1].lower()
     if ext not in app.config['ALLOWED_EXTENSIONS']:
         return False
-    # Reject suspicious patterns
-    if re.search(r'[^\w\-.]', parts[0]):
+    # Reject double extensions (e.g. file.php.jpg)
+    if '.' in parts[0]:
         return False
     return True
 
@@ -177,6 +180,25 @@ def allowed_file(filename):
 def sanitize_filename(name):
     """Generate safe random filename for uploads."""
     return secrets.token_hex(16)
+
+
+def delete_upload_file(url_path):
+    """Safely delete a file from static/uploads given its URL path (e.g. /static/uploads/xxx.png)."""
+    if not url_path or not url_path.startswith('/static/uploads/'):
+        return
+    # Extract filename: /static/uploads/xxx.png -> static/uploads/xxx.png
+    rel_path = url_path.lstrip('/')
+    filepath = os.path.join(app.root_path, rel_path)
+    if os.path.isfile(filepath):
+        try:
+            os.remove(filepath)
+        except OSError:
+            pass
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({"error": "File too large. Maximum size is 10MB. Try a smaller image."}), 413
 
 
 @app.after_request
@@ -198,6 +220,7 @@ def index():
 _admin_path = app.config['ADMIN_PATH']
 
 
+@app.route(f'/{_admin_path}/', methods=['GET', 'POST'])
 @app.route(f'/{_admin_path}', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", key_func=lambda: request.remote_addr)
 def admin():
@@ -217,6 +240,7 @@ def admin():
     return render_template('admin_login.html', csrf_token=get_csrf_token())
 
 
+@app.route(f'/{_admin_path}/panel/')
 @app.route(f'/{_admin_path}/panel')
 def admin_panel():
     if not session.get('admin_logged_in'):
@@ -224,6 +248,7 @@ def admin_panel():
     return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, csrf_token=get_csrf_token())
 
 
+@app.route(f'/{_admin_path}/logout/')
 @app.route(f'/{_admin_path}/logout')
 def admin_logout():
     session.clear()
@@ -257,11 +282,18 @@ def upload_profile_picture():
         return jsonify({"error": "Invalid file type"}), 400
     ext = file.filename.rsplit('.', 1)[1].lower()
     if not validate_image_content(file.stream, ext):
-        return jsonify({"error": "File is not a valid image"}), 400
+        return jsonify({"error": "File is not a valid image. Use PNG, JPG, GIF, or WebP."}), 400
     file.stream.seek(0)
+    # Delete old profile pic before saving new one
+    old_pic = PROFILE.get('profile_pic')
+    if old_pic:
+        delete_upload_file(old_pic)
     safe_name = f"{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
-    file.save(filepath)
+    try:
+        file.save(filepath)
+    except OSError as e:
+        return jsonify({"error": "Could not save file. Check server permissions."}), 500
     PROFILE['profile_pic'] = f'/static/uploads/{safe_name}'
     return jsonify({"success": True, "url": PROFILE['profile_pic']})
 
@@ -283,6 +315,10 @@ def upload_resume():
         file.stream.seek(0)
         return jsonify({"error": "File is not a valid PDF"}), 400
     file.stream.seek(0)
+    # Delete old resume before saving new one
+    old_resume = PROFILE.get('resume')
+    if old_resume:
+        delete_upload_file(old_resume)
     safe_name = f"resume_{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
     file.save(filepath)
@@ -456,6 +492,9 @@ def delete_project(project_id):
     project = next((p for p in PROJECTS if p['id'] == project_id), None)
     if not project:
         return jsonify({"error": "Project not found"}), 404
+    # Delete all screenshot files for this project
+    for url in project.get('screenshots', []):
+        delete_upload_file(url)
     PROJECTS = [p for p in PROJECTS if p['id'] != project_id]
     return jsonify({"success": True})
 
@@ -479,12 +518,32 @@ def upload_project_screenshot(project_id):
     if not validate_image_content(file.stream, ext):
         return jsonify({"error": "File is not a valid image"}), 400
     file.stream.seek(0)
+    # Delete old screenshots for this project (keep only the latest one)
+    for url in project.get('screenshots', []):
+        delete_upload_file(url)
+    project['screenshots'] = []
     safe_name = f"project_{project_id}_{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'projects', safe_name)
     file.save(filepath)
     url = f'/static/uploads/projects/{safe_name}'
     project['screenshots'].append(url)
     return jsonify({"success": True, "url": url, "screenshots": project['screenshots']})
+
+
+@app.route('/api/projects/<int:project_id>/screenshot', methods=['DELETE'])
+@admin_required
+@csrf_required
+def delete_project_screenshot(project_id):
+    project = next((p for p in PROJECTS if p['id'] == project_id), None)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+    data = request.json or {}
+    url = data.get('url', '')
+    if url and url in project.get('screenshots', []):
+        delete_upload_file(url)
+        project['screenshots'] = [s for s in project['screenshots'] if s != url]
+        return jsonify({"success": True, "screenshots": project['screenshots']})
+    return jsonify({"error": "Screenshot not found"}), 404
 
 
 if __name__ == '__main__':

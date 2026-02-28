@@ -74,8 +74,8 @@ function initProfilePicUpload() {
 
         try {
             const res = await fetchWithAuth('/api/profile/picture', { method: 'POST', body: formData });
-            const data = await res.json();
-            if (data.success) {
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
                 if (placeholder) placeholder.remove();
                 let img = document.getElementById('profileImg');
                 if (!img) {
@@ -88,10 +88,11 @@ function initProfilePicUpload() {
                 img.src = data.url + '?t=' + Date.now();
                 showToast('Profile picture updated!');
             } else {
-                showToast(data.error || 'Upload failed', true);
+                const msg = data.error || (res.status === 413 ? 'File too large. Use an image under 10MB.' : `Upload failed (${res.status})`);
+                showToast(msg, true);
             }
         } catch (err) {
-            showToast('Upload failed', true);
+            showToast('Upload failed: ' + (err.message || 'Network error'), true);
         }
         input.value = '';
     });
@@ -345,13 +346,16 @@ function attachScreenshotUpload(input) {
                     const item = document.querySelector(`.admin-project-item[data-id="${projectId}"]`);
                     const preview = item?.querySelector('.project-screenshots-preview');
                     if (preview) {
-                        const img = document.createElement('img');
-                        img.src = data.url + '?t=' + Date.now();
-                        img.alt = 'Screenshot';
-                        img.className = 'thumb';
-                        preview.appendChild(img);
+                        preview.innerHTML = '';
+                        const wrap = document.createElement('div');
+                        wrap.className = 'screenshot-thumb-wrap';
+                        wrap.innerHTML = `<img src="${data.url}?t=${Date.now()}" alt="Screenshot" class="thumb" data-url="${data.url}"><button type="button" class="screenshot-remove-btn" data-project-id="${projectId}" data-url="${data.url}" title="Remove">×</button>`;
+                        preview.appendChild(wrap);
+                        attachScreenshotRemove(wrap.querySelector('.screenshot-remove-btn'));
                     }
-                    showToast('Screenshot added!');
+                    const proj = getProjectsData().find(p => p.id === projectId);
+                    if (proj) proj.screenshots = data.screenshots || [];
+                    showToast('Screenshot updated!');
                 } else {
                     showToast(data.error || 'Upload failed', true);
                 }
@@ -362,8 +366,36 @@ function attachScreenshotUpload(input) {
         });
 }
 
+function attachScreenshotRemove(btn) {
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        const projectId = parseInt(btn.dataset.projectId, 10);
+        const url = btn.dataset.url;
+        if (!projectId || !url) return;
+        try {
+            const res = await fetchWithAuth(`/api/projects/${projectId}/screenshot`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                btn.closest('.screenshot-thumb-wrap')?.remove();
+                const proj = getProjectsData().find(p => p.id === projectId);
+                if (proj) proj.screenshots = data.screenshots || [];
+                showToast('Screenshot removed.');
+            } else {
+                showToast(data.error || 'Failed to remove', true);
+            }
+        } catch (err) {
+            showToast('Failed to remove screenshot', true);
+        }
+    });
+}
+
 function initScreenshotUploads() {
     document.querySelectorAll('.screenshot-input').forEach(attachScreenshotUpload);
+    document.querySelectorAll('.screenshot-remove-btn').forEach(attachScreenshotRemove);
 }
 
 function attachProjectEdit(btn) {
@@ -386,7 +418,7 @@ function attachProjectDelete(btn) {
     if (!btn) return;
     btn.addEventListener('click', async () => {
         const id = parseInt(btn.dataset.projectId, 10);
-        if (!confirm('Delete this project? Screenshots will remain on server.')) return;
+        if (!confirm('Delete this project? Screenshots will be removed.')) return;
         try {
             const res = await fetchWithAuth(`/api/projects/${id}`, { method: 'DELETE' });
             const data = await res.json().catch(() => ({}));

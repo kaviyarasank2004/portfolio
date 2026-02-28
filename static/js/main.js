@@ -2,7 +2,40 @@
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
     initScreenshotLightbox();
+    initNavScroll();
+    initSecurityPopup();
 });
+
+function initSecurityPopup() {
+    const popup = document.getElementById('securityPopup');
+    const closeBtn = popup?.querySelector('.security-popup-close');
+    if (!popup) return;
+
+    const slogans = ['Stay Secure', 'Protect & Defend', 'Secure by Design', 'Zero Trust Mindset', 'Defense in Depth'];
+    const slogan = slogans[Math.floor(Math.random() * slogans.length)];
+    popup.querySelector('.security-popup-text').textContent = slogan;
+
+    const show = () => {
+        if (sessionStorage.getItem('securityPopupSeen')) return;
+        popup.classList.add('visible');
+        sessionStorage.setItem('securityPopupSeen', '1');
+        setTimeout(() => popup.classList.remove('visible'), 4500);
+    };
+
+    setTimeout(show, 1500);
+
+    closeBtn?.addEventListener('click', () => popup.classList.remove('visible'));
+}
+
+function initNavScroll() {
+    const nav = document.querySelector('.nav');
+    if (!nav) return;
+    const onScroll = () => {
+        nav.classList.toggle('scrolled', window.scrollY > 20);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+}
 
 function showToast(message, isError = false) {
     const existing = document.querySelector('.toast');
