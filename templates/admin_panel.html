@@ -24,6 +24,21 @@
         <p class="admin-desc">Manage your portfolio content. Changes appear on the public site immediately.</p>
 
         <section class="admin-section">
+            <h2>Primary Theme</h2>
+            <p class="admin-hint">Choose the default theme for visitors. Users can still toggle theme on the home page; this sets the initial preference.</p>
+            <div class="theme-selector">
+                <button type="button" class="theme-option {% if primary_theme == 'light' %}active{% endif %}" data-theme="light" title="Light theme">
+                    <span class="theme-option-icon">☀</span>
+                    <span class="theme-option-label">Light</span>
+                </button>
+                <button type="button" class="theme-option {% if primary_theme == 'dark' %}active{% endif %}" data-theme="dark" title="Dark theme">
+                    <span class="theme-option-icon">🌙</span>
+                    <span class="theme-option-label">Dark</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="admin-section">
             <h2>Profile Picture</h2>
             <div class="profile-pic-wrapper">
                 <div class="profile-pic-container" id="profilePicContainer">
@@ -218,6 +233,8 @@
             </div>
         </section>
     </main>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>initTheme();</script>
 </body>
 </html>

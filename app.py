@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import secrets
@@ -46,6 +47,35 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'projects'), exist_ok=True)
+
+# Site config (primary theme, etc.) - persisted in JSON
+SITE_CONFIG_PATH = Path(__file__).resolve().parent / 'site_config.json'
+DEFAULT_SITE_CONFIG = {"primary_theme": "light"}
+
+
+def load_site_config():
+    """Load site config from JSON file."""
+    if SITE_CONFIG_PATH.exists():
+        try:
+            with open(SITE_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return {**DEFAULT_SITE_CONFIG, **data}
+        except (json.JSONDecodeError, OSError):
+            pass
+    return dict(DEFAULT_SITE_CONFIG)
+
+
+def save_site_config(config):
+    """Save site config to JSON file."""
+    try:
+        with open(SITE_CONFIG_PATH, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except OSError:
+        return False
+
+
+SITE_CONFIG = load_site_config()
 
 # Image magic bytes (file signatures) for validation
 IMAGE_SIGNATURES = {
@@ -214,7 +244,7 @@ def add_security_headers(response):
 
 @app.route('/')
 def index():
-    return render_template('index.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS)
+    return render_template('index.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, primary_theme=SITE_CONFIG.get('primary_theme', 'light'))
 
 
 _admin_path = app.config['ADMIN_PATH']
@@ -245,7 +275,7 @@ def admin():
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin'))
-    return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, csrf_token=get_csrf_token())
+    return render_template('admin_panel.html', profile=PROFILE, certificates=CERTIFICATES, projects=PROJECTS, csrf_token=get_csrf_token(), primary_theme=SITE_CONFIG.get('primary_theme', 'light'))
 
 
 @app.route(f'/{_admin_path}/logout/')
@@ -266,6 +296,21 @@ def api_csrf():
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
     return jsonify(PROFILE)
+
+
+@app.route('/api/site-config/primary-theme', methods=['POST'])
+@admin_required
+@csrf_required
+def update_primary_theme():
+    """Set the default theme for new visitors (light or dark)."""
+    data = request.get_json(silent=True) or {}
+    theme = (data.get('theme') or '').strip().lower()
+    if theme not in ('light', 'dark'):
+        return jsonify({"error": "Theme must be 'light' or 'dark'"}), 400
+    SITE_CONFIG['primary_theme'] = theme
+    if not save_site_config(SITE_CONFIG):
+        return jsonify({"error": "Could not save config"}), 500
+    return jsonify({"success": True, "primary_theme": theme})
 
 
 @app.route('/api/profile/picture', methods=['POST'])

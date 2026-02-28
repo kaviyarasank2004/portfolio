@@ -28,6 +28,10 @@
             <li><a href="#skills">Skills</a></li>
             <li><a href="#contact">Contact</a></li>
         </ul>
+        <button type="button" class="theme-toggle-btn nav-theme-toggle" id="themeToggle" title="Switch to dark theme" aria-label="Toggle theme">
+            <span class="theme-icon theme-sun" aria-hidden="true">☀</span>
+            <span class="theme-icon theme-moon" aria-hidden="true">🌙</span>
+        </button>
         <button class="nav-toggle" aria-label="Menu">☰</button>
     </nav>
 
@@ -214,6 +218,9 @@
         <button class="security-popup-close" aria-label="Close">×</button>
     </div>
 
+    <script>window.PORTFOLIO_PRIMARY_THEME = "{{ primary_theme }}";</script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>initTheme();</script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 // Admin Panel - Profile, Certificates, Projects (credentials: include for session)
 document.addEventListener('DOMContentLoaded', () => {
+    initPrimaryThemeSelector();
     initProfilePicUpload();
     initResumeUpload();
     initAddExperience();
@@ -26,6 +27,33 @@ function showToast(message, isError = false) {
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+function initPrimaryThemeSelector() {
+    const options = document.querySelectorAll('.theme-option');
+    options.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const theme = btn.dataset.theme;
+            if (!theme) return;
+            try {
+                const res = await fetchWithAuth('/api/site-config/primary-theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ theme })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    options.forEach(o => o.classList.remove('active'));
+                    btn.classList.add('active');
+                    showToast('Primary theme set to ' + theme);
+                } else {
+                    showToast(data.error || 'Failed to save', true);
+                }
+            } catch {
+                showToast('Request failed', true);
+            }
+        });
+    });
 }
 
 function getCertificatesData() {

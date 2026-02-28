@@ -1,5 +1,6 @@
 /* Professional Cybersecurity Portfolio */
-:root {
+:root,
+[data-theme="light"] {
     --bg: #f8fafc;
     --bg-card: #ffffff;
     --bg-elevated: #f1f5f9;
@@ -20,6 +21,26 @@
     --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
+/* Dark Theme - Professional cyber/terminal aesthetic */
+[data-theme="dark"] {
+    --bg: #0b0d12;
+    --bg-card: #11151c;
+    --bg-elevated: #181d26;
+    --accent: #0891b2;
+    --accent-dim: #06b6d4;
+    --accent-soft: rgba(8, 145, 178, 0.1);
+    --accent-secondary: #10b981;
+    --text: #e4e6ea;
+    --text-muted: #8a94a4;
+    --border: #1c222d;
+    --danger: #f87171;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3), 0 0 1px rgba(8, 145, 178, 0.06);
+    --shadow-lg: 0 10px 36px rgba(0, 0, 0, 0.4), 0 0 1px rgba(8, 145, 178, 0.08);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -38,7 +59,7 @@ body {
     overflow-x: hidden;
 }
 
-/* Subtle light background */
+/* Subtle background */
 .soc-bg {
     position: fixed;
     top: 0;
@@ -48,6 +69,101 @@ body {
     background: linear-gradient(180deg, #ffffff 0%, var(--bg) 50%, #f1f5f9 100%);
     pointer-events: none;
     z-index: 0;
+}
+
+[data-theme="dark"] .soc-bg {
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(8, 145, 178, 0.04) 0%, transparent 50%),
+                linear-gradient(180deg, #0e1015 0%, var(--bg) 45%, #090b0f 100%);
+}
+
+[data-theme="dark"] .nav {
+    background: rgba(15, 18, 24, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .nav-logo {
+    color: var(--text);
+}
+
+[data-theme="dark"] .nav-logo-icon svg {
+    stroke: var(--accent);
+}
+
+[data-theme="dark"] .admin-login-box,
+[data-theme="dark"] .admin-nav {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .security-popup {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .profile-placeholder,
+[data-theme="dark"] .project-placeholder {
+    background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+}
+
+[data-theme="dark"] .nav.scrolled {
+    box-shadow: 0 1px 0 var(--border), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark: card hover glow */
+[data-theme="dark"] .exp-card:hover,
+[data-theme="dark"] .project-card:hover,
+[data-theme="dark"] .cert-card:hover {
+    border-color: rgba(8, 145, 178, 0.2);
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .education-block {
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .skill-tag:hover {
+    border-color: rgba(8, 145, 178, 0.25);
+}
+
+[data-theme="dark"] .contact-info p:hover {
+    border-color: rgba(8, 145, 178, 0.18);
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+    background: var(--bg-elevated);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+[data-theme="dark"] .resume-link {
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .resume-link:hover {
+    background: var(--accent) !important;
+    border-color: var(--accent);
+}
+
+[data-theme="dark"] .profile-pic-container {
+    border-color: var(--border);
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .profile-pic-container:hover {
+    border-color: rgba(8, 145, 178, 0.35);
+    box-shadow: 0 0 20px rgba(8, 145, 178, 0.1);
+}
+
+[data-theme="dark"] .add-cert-modal {
+    background: rgba(0, 0, 0, 0.9);
 }
 
 /* Navigation */
@@ -1033,6 +1149,45 @@ section h2 {
     color: var(--accent);
 }
 
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.theme-toggle-btn .theme-icon {
+    font-size: 1.1rem;
+}
+
+.theme-toggle-btn .theme-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-btn .theme-sun {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-btn .theme-moon {
+    display: inline;
+}
+
+.nav-theme-toggle {
+    margin-left: 0.5rem;
+}
+
 .logout-btn {
     color: var(--danger) !important;
 }
@@ -1062,6 +1217,42 @@ section h2 {
     font-size: 1.2rem;
     margin-bottom: 1rem;
     color: var(--accent);
+}
+
+.theme-selector {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.theme-option:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.theme-option.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.theme-option-icon {
+    font-size: 1.2rem;
 }
 
 .admin-hint {

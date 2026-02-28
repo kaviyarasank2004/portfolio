@@ -4,7 +4,21 @@ document.addEventListener('DOMContentLoaded', () => {
     initScreenshotLightbox();
     initNavScroll();
     initSecurityPopup();
+    initThemeToggle();
 });
+
+function initThemeToggle() {
+    const btn = document.getElementById('themeToggle');
+    function updateTitle() {
+        const theme = getTheme();
+        btn?.setAttribute('title', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+    btn?.addEventListener('click', () => {
+        toggleTheme();
+        updateTitle();
+    });
+    updateTitle();
+}
 
 function initSecurityPopup() {
     const popup = document.getElementById('securityPopup');
