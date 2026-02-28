@@ -192,6 +192,52 @@ PROJECTS = [
     },
 ]
 
+# Persistent data storage for profile, certificates, and projects
+DATA_PATH = Path(__file__).resolve().parent / 'portfolio_data.json'
+
+
+def load_data():
+    """Load portfolio data from JSON file if it exists."""
+    if not DATA_PATH.exists():
+        return
+    try:
+        with open(DATA_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return
+
+    profile_data = data.get('profile')
+    if isinstance(profile_data, dict):
+        PROFILE.update(profile_data)
+
+    certs = data.get('certificates')
+    if isinstance(certs, list):
+        CERTIFICATES.clear()
+        CERTIFICATES.extend(certs)
+
+    projects = data.get('projects')
+    if isinstance(projects, list):
+        PROJECTS.clear()
+        PROJECTS.extend(projects)
+
+
+def save_data():
+    """Persist portfolio data to JSON on disk."""
+    payload = {
+        "profile": PROFILE,
+        "certificates": CERTIFICATES,
+        "projects": PROJECTS,
+    }
+    try:
+        with open(DATA_PATH, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+        return True
+    except OSError:
+        return False
+
+
+load_data()
+
 
 def allowed_file(filename):
     """Validate extension and reject double extensions (e.g. file.php.jpg)."""
@@ -337,9 +383,10 @@ def upload_profile_picture():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
     try:
         file.save(filepath)
-    except OSError as e:
+    except OSError:
         return jsonify({"error": "Could not save file. Check server permissions."}), 500
     PROFILE['profile_pic'] = f'/static/uploads/{safe_name}'
+    save_data()
     return jsonify({"success": True, "url": PROFILE['profile_pic']})
 
 
@@ -366,8 +413,12 @@ def upload_resume():
         delete_upload_file(old_resume)
     safe_name = f"resume_{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
-    file.save(filepath)
+    try:
+        file.save(filepath)
+    except OSError:
+        return jsonify({"error": "Could not save file. Check server permissions."}), 500
     PROFILE['resume'] = f'/static/uploads/{safe_name}'
+    save_data()
     return jsonify({"success": True, "url": PROFILE['resume']})
 
 
@@ -392,6 +443,7 @@ def add_experience():
     new_id = max((e['id'] for e in PROFILE['experience']), default=0) + 1
     exp = {"id": new_id, "role": role, "company": company, "points": points}
     PROFILE['experience'].append(exp)
+    save_data()
     return jsonify(exp), 201
 
 
@@ -408,6 +460,7 @@ def update_experience(exp_id):
     points = data.get('points', exp.get('points', []))
     if isinstance(points, list):
         exp['points'] = [str(p)[:500] for p in points[:15] if p]
+    save_data()
     return jsonify(exp)
 
 
@@ -419,6 +472,7 @@ def delete_experience(exp_id):
     if not exp:
         return jsonify({"error": "Experience not found"}), 404
     PROFILE['experience'] = [e for e in PROFILE['experience'] if e['id'] != exp_id]
+    save_data()
     return jsonify({"success": True})
 
 
@@ -449,6 +503,7 @@ def add_certificate():
         "url": url
     }
     CERTIFICATES.append(cert)
+    save_data()
     return jsonify(cert), 201
 
 
@@ -466,6 +521,7 @@ def update_certificate(cert_id):
     cert['credential_id'] = str(data.get('credential_id', cert.get('credential_id', '')))[:100]
     url = str(data.get('url', cert.get('url', '')))[:500]
     cert['url'] = url if url.startswith(('http://', 'https://')) else ''
+    save_data()
     return jsonify(cert)
 
 
@@ -478,6 +534,7 @@ def delete_certificate(cert_id):
     if not cert:
         return jsonify({"error": "Certificate not found"}), 404
     CERTIFICATES = [c for c in CERTIFICATES if c['id'] != cert_id]
+    save_data()
     return jsonify({"success": True})
 
 
@@ -508,6 +565,7 @@ def add_project():
         "tech": tech
     }
     PROJECTS.append(project)
+    save_data()
     return jsonify(project), 201
 
 
@@ -526,6 +584,7 @@ def update_project(project_id):
         project['tech'] = [str(t)[:50] for t in tech[:20]]
     else:
         project['tech'] = project.get('tech', [])
+    save_data()
     return jsonify(project)
 
 
@@ -541,6 +600,7 @@ def delete_project(project_id):
     for url in project.get('screenshots', []):
         delete_upload_file(url)
     PROJECTS = [p for p in PROJECTS if p['id'] != project_id]
+    save_data()
     return jsonify({"success": True})
 
 
@@ -569,9 +629,13 @@ def upload_project_screenshot(project_id):
     project['screenshots'] = []
     safe_name = f"project_{project_id}_{sanitize_filename('')}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'projects', safe_name)
-    file.save(filepath)
+    try:
+        file.save(filepath)
+    except OSError:
+        return jsonify({"error": "Could not save file. Check server permissions."}), 500
     url = f'/static/uploads/projects/{safe_name}'
     project['screenshots'].append(url)
+    save_data()
     return jsonify({"success": True, "url": url, "screenshots": project['screenshots']})
 
 
@@ -587,6 +651,7 @@ def delete_project_screenshot(project_id):
     if url and url in project.get('screenshots', []):
         delete_upload_file(url)
         project['screenshots'] = [s for s in project['screenshots'] if s != url]
+        save_data()
         return jsonify({"success": True, "screenshots": project['screenshots']})
     return jsonify({"error": "Screenshot not found"}), 404
 
